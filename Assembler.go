@@ -3,8 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
+	"path/filepath"
+	"strconv"
 
+	"github.com/YumaMiyata910/hack-assembler-go/code"
 	"github.com/YumaMiyata910/hack-assembler-go/parser"
 )
 
@@ -17,29 +21,54 @@ func main() {
 	}
 
 	path := args[1]
-	file, err := os.Open(path)
+	readfile, err := os.Open(path)
 	if err != nil {
-		fmt.Printf("No such file: %s", path)
-		os.Exit(1)
+		log.Fatalf("No such file: %s", path)
 	}
-	defer file.Close()
+	defer readfile.Close()
 
-	sc := bufio.NewScanner(file)
+	filename := filepath.Base(path[:len(path)-len(filepath.Ext(path))])
+	writefile, err := os.Create(filename + ".hack")
+	if err != nil {
+		log.Fatalln("新規ファイルを作成できません。")
+	}
+	defer writefile.Close()
 
-	parser := parser.NewParser(sc)
+	sc := bufio.NewScanner(readfile)
 
-	for parser.HasMoreCommands() {
-		if err = parser.ScannerError(); err != nil {
-			fmt.Printf("ファイルの読み込みに失敗しました。path:【%s】", path)
-			os.Exit(1)
+	p := parser.NewParser(sc)
+
+	for p.HasMoreCommands() {
+		if err = p.ScannerError(); err != nil {
+			log.Fatalf("ファイルの読み込みに失敗しました。path:【%s】", path)
 		}
 
-		parser.Advance()
-		if parser.Text() == "" {
+		p.Advance()
+		if p.Text() == "" {
 			continue
 		}
 
-		fmt.Printf("%s: %s\n", parser.Text(), parser.CommandType())
-	}
+		var bin string
+		if p.CommandType() == parser.ACommand ||
+			p.CommandType() == parser.LCommand {
+			sym, err := strconv.Atoi(p.Symbol())
+			if err != nil {
+				log.Fatalln("symbolを数値変換できません。")
+			}
+			bin = fmt.Sprintf("%016b", sym)
+		} else if p.CommandType() == parser.CCommand {
+			dest, err := code.Dest(p.Dest())
+			comp, err := code.Comp(p.Comp())
+			jump, err := code.Jump(p.Jump())
+			if err != nil {
+				log.Fatalln(err)
+			}
+			bin = fmt.Sprintf("111%s%s%s", comp, dest, jump)
+		}
 
+		_, err = writefile.Write([]byte(bin + "\n"))
+		if err != nil {
+			log.Fatalln("ファイル書き込みに失敗しました。")
+		}
+	}
 }
