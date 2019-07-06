@@ -24,7 +24,7 @@ func Dest(mnemonic string) (string, error) {
 	case "":
 		bin = "000"
 	default:
-		err = fmt.Errorf("Failed to converting dest binary.\n")
+		err = fmt.Errorf("Failed to converting dest binary. [mnemonic = %s]", mnemonic)
 	}
 
 	return bin, err
@@ -92,7 +92,7 @@ func Comp(mnemonic string) (string, error) {
 	case "D|M":
 		bin = "1010101"
 	default:
-		fmt.Errorf("Failed to converting comp binary.\n")
+		err = fmt.Errorf("Failed to converting comp binary. [mnemonic = %s]", mnemonic)
 	}
 
 	return bin, err
@@ -120,7 +120,7 @@ func Jump(mnemonic string) (string, error) {
 	case "":
 		bin = "000"
 	default:
-		err = fmt.Errorf("Failed to converting jump binary.\n")
+		err = fmt.Errorf("Failed to converting jump binary. [mnemonic = %s]", mnemonic)
 	}
 
 	return bin, err
