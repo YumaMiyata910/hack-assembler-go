@@ -27,16 +27,23 @@ func main() {
 	}
 	defer readfile.Close()
 
+	sc := bufio.NewScanner(readfile)
+
+	p := parser.NewParser(sc)
+
+
+
+	
+}
+
+
+func makeHack() error {
 	filename := filepath.Base(path[:len(path)-len(filepath.Ext(path))])
 	writefile, err := os.Create(filename + ".hack")
 	if err != nil {
 		log.Fatalln("新規ファイルを作成できません。")
 	}
 	defer writefile.Close()
-
-	sc := bufio.NewScanner(readfile)
-
-	p := parser.NewParser(sc)
 
 	for p.HasMoreCommands() {
 		if err = p.ScannerError(); err != nil {
