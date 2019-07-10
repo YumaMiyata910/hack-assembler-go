@@ -10,6 +10,7 @@ import (
 
 	"github.com/YumaMiyata910/hack-assembler-go/code"
 	"github.com/YumaMiyata910/hack-assembler-go/parser"
+	"github.com/YumaMiyata910/hack-assembler-go/symboltable"
 )
 
 func main() {
@@ -21,33 +22,77 @@ func main() {
 	}
 
 	path := args[1]
+
+	// read symboltable
+	st, err := makeSymbolTable(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// write .hack
+	err = makeHack(path, st)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func makeSymbolTable(path string) (symboltable.SymbolTable, error) {
 	readfile, err := os.Open(path)
 	if err != nil {
-		log.Fatalf("No such file: %s", path)
+		return nil, fmt.Errorf("No such file: %s", path)
 	}
 	defer readfile.Close()
 
 	sc := bufio.NewScanner(readfile)
-
 	p := parser.NewParser(sc)
 
-
-
-	
-}
-
-
-func makeHack() error {
-	filename := filepath.Base(path[:len(path)-len(filepath.Ext(path))])
-	writefile, err := os.Create(filename + ".hack")
-	if err != nil {
-		log.Fatalln("新規ファイルを作成できません。")
-	}
-	defer writefile.Close()
+	st := symboltable.NewSymbolTable()
+	var address int
 
 	for p.HasMoreCommands() {
 		if err = p.ScannerError(); err != nil {
-			log.Fatalf("ファイルの読み込みに失敗しました。path:【%s】", path)
+			return nil, fmt.Errorf("ファイルの読み込みに失敗しました。path:【%s】", path)
+		}
+
+		p.Advance()
+		if p.Text() == "" {
+			continue
+		}
+
+		if p.CommandType() == parser.ACommand ||
+			p.CommandType() == parser.CCommand {
+			address += 1
+		} else if p.CommandType() == parser.LCommand {
+			sym := p.Symbol()
+			st.AddEntry(sym, address)
+		}
+	}
+
+	return st, nil
+}
+
+func makeHack(path string, st symboltable.SymbolTable) error {
+	readfile, err := os.Open(path)
+	if err != nil {
+		return fmt.Errorf("No such file: %s", path)
+	}
+	defer readfile.Close()
+
+	sc := bufio.NewScanner(readfile)
+	p := parser.NewParser(sc)
+
+	filename := filepath.Base(path[:len(path)-len(filepath.Ext(path))])
+	writefile, err := os.Create(filename + ".hack")
+	if err != nil {
+		return fmt.Errorf("新規ファイルを作成できません。 %v", err)
+	}
+	defer writefile.Close()
+
+	var ram int = 16
+	for p.HasMoreCommands() {
+		if err = p.ScannerError(); err != nil {
+			return fmt.Errorf("ファイルの読み込みに失敗しました。path:【%s】", path)
 		}
 
 		p.Advance()
@@ -56,13 +101,21 @@ func makeHack() error {
 		}
 
 		var bin string
-		if p.CommandType() == parser.ACommand ||
-			p.CommandType() == parser.LCommand {
-			sym, err := strconv.Atoi(p.Symbol())
+		if p.CommandType() == parser.ACommand {
+			symbol := p.Symbol()
+			val, err := strconv.Atoi(symbol)
+			// 「err != nil」 is symbol.
 			if err != nil {
-				log.Fatalln("symbolを数値変換できません。")
+				// 「!exists」 is new variable symbol.
+				if st.Contains(symbol) {
+					val, _ = st.GetAddress(symbol)
+				} else {
+					st.AddEntry(symbol, ram)
+					val = ram
+					ram += 1
+				}
 			}
-			bin = fmt.Sprintf("%016b", sym)
+			bin = fmt.Sprintf("%016b", val)
 		} else if p.CommandType() == parser.CCommand {
 			dest, err := code.Dest(p.Dest())
 			comp, err := code.Comp(p.Comp())
@@ -71,11 +124,15 @@ func makeHack() error {
 				log.Fatalln(err)
 			}
 			bin = fmt.Sprintf("111%s%s%s", comp, dest, jump)
+		} else {
+			continue
 		}
 
 		_, err = writefile.Write([]byte(bin + "\n"))
 		if err != nil {
-			log.Fatalln("ファイル書き込みに失敗しました。")
+			return fmt.Errorf("ファイル書き込みに失敗しました。 %v", err)
 		}
 	}
+
+	return nil
 }
