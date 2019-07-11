@@ -134,5 +134,7 @@ func makeHack(path string, st symboltable.SymbolTable) error {
 		}
 	}
 
+	fmt.Printf("created %s\n", filename)
+
 	return nil
 }
