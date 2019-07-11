@@ -10,6 +10,6 @@ $ go get -u github.com/YumaMiyata910/hack-assembler-go
 
 ## Usage
 ```bash
-$ $GOPATH/bin/Assembler Xxx.asm
+$ $GOPATH/bin/hack-assembler-go Xxx.asm
 # created Xxx.hack
 ```
