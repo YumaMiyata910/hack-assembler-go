@@ -5,7 +5,7 @@ This project created as part of [Nand2Tetris](https://github.com/YumaMiyata910/n
 
 ## Install
 ```bash
-$ go get https://github.com/YumaMiyata910/hack-assembler-go
+$ go get -u github.com/YumaMiyata910/hack-assembler-go
 ```
 
 ## Usage
